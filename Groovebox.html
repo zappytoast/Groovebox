@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Groovebox Media Player</title>
+<style>
+  :root{
+    --tb1:#0a246a; --tb2:#3a6ea5; --tb3:#a6caf0;
+    --accent:#316ac5; --face:#ece9d8; --face2:#f4f2e8;
+    --ink:#101010; --ink-dim:#555;
+    box-sizing:border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-padding-top: env(safe-area-inset-top, 0px); height:100%;}
+  html, body{ overflow-y:auto; }
+  body{
+    margin:0; min-height:100%; color:var(--ink);
+    font-family: Tahoma, Verdana, 'Segoe UI', sans-serif; font-size:12px;
+    background: linear-gradient(#6fa8dc 0%, #9fc5e8 35%, #cfe3c7 70%, #8fb87a 100%);
+  }
+  .ui-font{font-family: Tahoma, Verdana, sans-serif;}
+
+  .window{max-width:820px; margin:30px auto 210px; background:var(--face); border:1px solid #4a4a4a; border-radius:8px 8px 3px 3px; box-shadow:0 10px 30px rgba(0,0,0,0.35); overflow:hidden;}
+  .titlebar{background:linear-gradient(180deg, var(--tb3) 0%, var(--tb2) 45%, var(--tb1) 100%); padding:6px 8px; display:flex; align-items:center; justify-content:space-between;}
+  .titlebar .title-text{color:#fff; font-weight:bold; font-size:13px; font-family:'Trebuchet MS', Tahoma, sans-serif; text-shadow:0 1px 1px rgba(0,0,0,0.4); letter-spacing:0.2px;}
+  .win-controls{display:flex; gap:4px;}
+  .win-controls button{width:21px; height:19px; border-radius:3px; border:1px solid rgba(255,255,255,0.5); background:linear-gradient(#fcfcfc,#d6e4f0); cursor:default; font-size:10px; color:#333;}
+  .win-controls button.close{background:linear-gradient(#ff8b7a,#e4432e); color:#fff; border-color:#a32a1a;}
+
+  .menubar{background:var(--face2); border-bottom:1px solid #c6c3b0; padding:4px 10px; display:flex; gap:16px; font-size:11.5px; color:#333;}
+
+  .content{padding:14px 16px;}
+  .toolbar{display:flex; justify-content:flex-end; gap:6px; margin-bottom:12px;}
+  .theme-btn{padding:4px 10px; font-size:11px; border:1px solid #7f9db9; border-radius:3px; cursor:pointer; background:linear-gradient(#fefefe,#e3e3e3);}
+  .theme-btn.sel{background:linear-gradient(#cfe0fb,#9ec0ef); border-color:var(--accent); font-weight:bold;}
+
+  fieldset{border:1px solid #9b9b86; border-radius:4px; padding:12px 14px 14px; background:var(--face2); margin:0 0 14px;}
+  legend{padding:0 6px; font-weight:bold; font-size:12px; color:#1a3b6e;}
+
+  .form-row{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:8px;}
+  .form-row label{flex:1; min-width:150px; display:flex; flex-direction:column; gap:3px; font-size:11px; color:var(--ink-dim);}
+  input[type=text], input[type=search], textarea{
+    background:#fff; border:1px solid #7f9db9; border-radius:2px; color:var(--ink);
+    padding:5px 7px; font-family:Tahoma, Verdana, sans-serif; font-size:12px; width:100%;
+    box-shadow: inset 1px 1px 2px rgba(0,0,0,0.15);
+  }
+  input:focus, textarea:focus{outline:1px solid var(--accent);}
+  textarea{resize:vertical; min-height:36px;}
+
+  .btn{background:linear-gradient(180deg,#fefefe,#e8e8e8 48%,#d7d7d7 52%,#eaeaea); border:1px solid #7f9db9; border-radius:3px; padding:6px 16px; font-size:12px; cursor:pointer; color:#111;}
+  .btn:hover{background:linear-gradient(180deg,#ffffff,#eef6ff 48%,#dbeaff 52%,#eef6ff); border-color:var(--accent);}
+  .btn:disabled{background:#e4e4e4; color:#999; cursor:not-allowed; border-color:#c0c0c0;}
+  .file-btn{display:inline-flex; align-items:center; gap:6px;}
+  .file-btn input{display:none;}
+  .file-ok{color:#1a7a3a; font-size:11px; margin-left:6px;}
+  .hint{font-size:10.5px; color:var(--ink-dim); margin:6px 0 0;}
+  .catalog-note{font-weight:normal; color:var(--ink-dim); font-size:10px;}
+  .catalog-results{border:1px solid #adadad; max-height:210px; overflow-y:auto; background:#fff; margin:0 0 10px;}
+  .catalog-row{display:flex; align-items:center; gap:8px; padding:5px 8px; cursor:pointer; border-bottom:1px solid #eee;}
+  .catalog-row:hover{background:#dcebfb;}
+  .catalog-thumb{width:32px; height:32px; background:#eee center/cover no-repeat; border:1px solid #c7c7c7; flex-shrink:0;}
+  .catalog-title{font-weight:bold; font-size:11.5px;}
+  .catalog-sub{font-size:10.5px; color:#555;}
+  .catalog-results .empty{padding:8px 10px; font-size:11px;}
+
+  .np-panel{border:1px solid #9b9b86; border-radius:4px; overflow:hidden; margin-bottom:14px;}
+  .np-head{background:linear-gradient(180deg, var(--tb3), var(--tb2)); color:#fff; font-weight:bold; font-size:11.5px; padding:5px 10px; font-family:'Trebuchet MS', Tahoma, sans-serif;}
+  .np-body{background:var(--face2); padding:12px; display:flex; gap:14px; align-items:center;}
+  .np-cover{width:72px; height:72px; border:1px solid #9b9b86; background:#fff center/cover no-repeat; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:9px; color:#999; cursor:pointer; text-align:center; line-height:1.3; padding:4px;}
+  .np-text{flex:1; min-width:0;}
+  .np-title{font-weight:bold; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .np-artist{font-size:11.5px; color:var(--ink-dim); margin-top:1px;}
+  .np-desc{font-size:11px; color:#555; font-style:italic; margin-top:4px; max-height:32px; overflow:hidden;}
+  .np-progress-row{display:flex; align-items:center; gap:8px; margin-top:8px;}
+  .np-progress-row span{font-size:10.5px; color:var(--ink-dim); width:30px; text-align:center;}
+  .p-progress{flex:1; height:12px; background:#d9d9d9; border:1px solid #9b9b9b; border-radius:2px; position:relative; cursor:pointer; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.25);}
+  .p-progress .fill{position:absolute; left:0; top:0; bottom:0; background: repeating-linear-gradient(90deg, var(--accent) 0 6px, color-mix(in srgb, var(--accent) 65%, white) 6px 7px); width:0%;}
+
+  .col-head{display:flex; background:linear-gradient(180deg,#fefefe,#e3e3e3); border:1px solid #adadad; border-bottom:none; font-size:10.5px; font-weight:bold; color:#333;}
+  .col-head > div{padding:4px 8px; border-right:1px solid #cfcfcf;}
+  .c-cover{width:44px;} .c-title{flex:1.3; min-width:0;} .c-artist{flex:0.9; min-width:0;} .c-desc{flex:1.4; min-width:0;} .c-dur{width:50px; text-align:right;} .c-del{width:24px;}
+
+  .track-list{border:1px solid #adadad; background:#fff;}
+  .empty{color:var(--ink-dim); font-size:12px; padding:16px;}
+  .track{display:flex; align-items:center; cursor:pointer; border-bottom:1px solid #e6e6e6;}
+  .track:nth-child(even){background:#f4f7fc;}
+  .track:hover{background:#dcebfb;}
+  .track.playing{background:var(--accent); color:#fff;}
+  .track.playing .dur, .track.playing .desc-cell, .track.playing .artist-cell{color:#eaf1ff;}
+  .track > div{padding:4px 8px; overflow:hidden;}
+  .cover-thumb{width:28px; height:28px; border:1px solid #c7c7c7; background:#eee center/cover no-repeat; flex-shrink:0; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:12px; color:#aaa;}
+  .title-cell{font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .artist-cell, .desc-cell{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#444; font-size:11px;}
+  .del-btn{background:none; border:none; cursor:pointer; color:#888; font-size:12px; visibility:hidden;}
+  .track:hover .del-btn{visibility:visible;}
+  .track.playing .del-btn{color:#fff;}
+  .del-btn:hover{color:#c0392b;}
+
+  .footer-bar{position:fixed; left:0; right:0; bottom:0; background:linear-gradient(180deg,#f2f2f2,#cfcfcf); border-top:1px solid #8c8c8c; padding:8px 16px calc(8px + env(safe-area-inset-bottom, 0px)); display:flex; align-items:center; justify-content:center; gap:20px;}
+  .footer-label{font-size:11px; color:#333; min-width:150px; text-align:right;}
+  .footer-label b{display:block; font-size:12px;}
+
+  .wheel{position:relative; width:150px; height:150px; border-radius:50%; flex-shrink:0;
+    background: radial-gradient(circle at 35% 28%, #ffffff, #dadadd 65%, #c2c2c6 100%);
+    border:1px solid #adadb0; box-shadow:0 2px 6px rgba(0,0,0,0.3), inset 0 1px 2px rgba(255,255,255,0.9);}
+  .wbtn{position:absolute; background:none; border:none; cursor:pointer; color:#6b6b6e; font-size:10.5px; font-weight:bold; letter-spacing:0.5px; font-family:Tahoma, Verdana, sans-serif;}
+  .wbtn:hover{color:var(--accent);}
+  .w-menu{top:12px; left:50%; transform:translateX(-50%);}
+  .w-prev{left:14px; top:50%; transform:translateY(-50%); font-size:13px;}
+  .w-next{right:14px; top:50%; transform:translateY(-50%); font-size:13px;}
+  .w-play{bottom:12px; left:50%; transform:translateX(-50%); font-size:13px;}
+  .w-center{position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:56px; height:56px; border-radius:50%;
+    background:radial-gradient(circle at 40% 35%, #ffffff, #e7e7ea); border:1px solid #c9c9cc; cursor:pointer;
+    box-shadow:inset 0 1px 2px rgba(255,255,255,0.9), inset 0 -1px 3px rgba(0,0,0,0.08);}
+  .wbtn:active, .w-center:active{transform:translate(-50%,-50%) scale(0.92);}
+  .w-prev:active{transform:translateY(-50%) scale(0.9);}
+  .w-next:active{transform:translateY(-50%) scale(0.9);}
+  .w-menu:active, .w-play:active{transform:translateX(-50%) scale(0.9);}
+
+  /* cover-art popup dialog */
+  .modal-overlay{position:fixed; inset:0; background:rgba(0,0,0,0.45); display:none; align-items:center; justify-content:center; z-index:60; padding:16px;}
+  .modal-overlay.open{display:flex;}
+  .dialog{width:320px; max-width:100%; background:var(--face); border:1px solid #4a4a4a; border-radius:6px; box-shadow:0 12px 30px rgba(0,0,0,0.5); overflow:hidden;}
+  .dialog .titlebar{padding:5px 8px;}
+  .dialog .titlebar .title-text{font-size:12px;}
+  .dialog-body{padding:16px; text-align:center;}
+  .dialog-song{font-weight:bold; font-size:12.5px; margin-bottom:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .dialog-preview{width:120px; height:120px; margin:0 auto 14px; border:1px solid #9b9b86; background:#fff center/cover no-repeat; display:flex; align-items:center; justify-content:center; font-size:11px; color:#999; box-shadow:inset 1px 1px 3px rgba(0,0,0,0.15);}
+  .dialog-actions{display:flex; justify-content:center; gap:8px; margin-top:4px;}
+
+  @media (max-width:640px){
+    .window{margin:10px auto 230px;}
+    .c-desc, .c-artist, .desc-cell{display:none;}
+    .footer-bar{flex-direction:column; gap:8px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="window">
+  <div class="titlebar">
+    <span class="title-text">Groovebox Media Player</span>
+    <div class="win-controls">
+      <button title="Minimize">&#9472;</button>
+      <button title="Maximize">&#9633;</button>
+      <button class="close" title="Close">&#10005;</button>
+    </div>
+  </div>
+  <div class="menubar"><span>File</span><span>Edit</span><span>View</span><span>Tools</span><span>Help</span></div>
+
+  <div class="content">
+    <div class="toolbar" id="themeToolbar"></div>
+
+    <fieldset>
+      <legend>Add a Track</legend>
+      <div class="form-row">
+        <label>Song title<input type="text" id="titleInput" placeholder="e.g. Midnight Drive"></label>
+        <label>Artist name<input type="text" id="artistInput" placeholder="e.g. The Satellites"></label>
+      </div>
+      <div class="form-row">
+        <label style="flex:1 1 100%;">Search song database <span class="catalog-note" id="catalogNote"></span>
+          <input type="text" id="catalogSearch" placeholder="Type a song or artist name...">
+        </label>
+      </div>
+      <div class="catalog-results" id="catalogResults"></div>
+      <div class="form-row">
+        <label style="flex:1 1 100%;">Description<textarea id="descInput" placeholder="Genre, mood, or a short note about this track..."></textarea></label>
+      </div>
+      <div class="form-row">
+        <label class="file-btn btn" style="flex:none; display:inline-flex;">Choose audio file<input type="file" id="audioInput" accept="audio/*,.wav,.mp3,.mp2,.m4a,.aac,.ogg,.oga,.opus,.flac,.wma,.aiff,.aif,.au,.snd,.amr,.3gp,.3g2,.weba,.caf,.voc,.ac3,.mid,.midi,.ra,.rm"></label>
+        <span class="file-ok" id="audioOk"></span>
+      </div>
+      <p class="hint">Accepts nearly any audio file — playback depends on your browser's built-in codec support, so a few very old formats (MIDI, RealAudio) may show up but can't actually play. After you add the track, you'll be asked to pick its cover art.</p>
+      <div style="margin-top:12px;"><button class="btn" id="addBtn" disabled>Add to Library</button></div>
+    </fieldset>
+
+    <div class="np-panel">
+      <div class="np-head">Now Playing</div>
+      <div class="np-body">
+        <div class="np-cover" id="npCover" title="Click to set cover art">no cover</div>
+        <div class="np-text">
+          <div class="np-title" id="npTitle">Nothing playing</div>
+          <div class="np-artist" id="npArtist">—</div>
+          <div class="np-desc" id="npDesc"></div>
+          <div class="np-progress-row">
+            <span id="curTime" class="ui-font">0:00</span>
+            <div class="p-progress" id="progress"><div class="fill" id="progressFill"></div></div>
+            <span id="durTime" class="ui-font">0:00</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <fieldset>
+      <legend>Library</legend>
+      <input type="search" id="searchInput" placeholder="Search title, artist, or description..." style="margin-bottom:10px;">
+      <div class="col-head">
+        <div class="c-cover"></div><div class="c-title">Title</div><div class="c-artist">Artist</div><div class="c-desc">Description</div><div class="c-dur">Time</div><div class="c-del"></div>
+      </div>
+      <div class="track-list" id="trackList"><div class="empty">No songs yet — add your first track above.</div></div>
+    </fieldset>
+  </div>
+</div>
+
+<div class="footer-bar">
+  <div class="footer-label"><b id="footTitle">Not playing</b><span id="footArtist">—</span></div>
+  <div class="wheel">
+    <button class="wbtn w-menu" id="menuBtn">MENU</button>
+    <button class="wbtn w-prev" id="prevBtn">&#9668;&#9668;</button>
+    <button class="wbtn w-next" id="nextBtn">&#9658;&#9658;</button>
+    <button class="wbtn w-play" id="playBtn">&#9658;&#10073;&#10073;</button>
+    <div class="w-center" id="centerBtn" title="Select"></div>
+  </div>
+  <div class="footer-label" style="text-align:left;">Volume<br><span id="footHint">Use the wheel</span></div>
+</div>
+
+<audio id="audioEl"></audio>
+
+<!-- cover art popup -->
+<div class="modal-overlay" id="coverOverlay">
+  <div class="dialog">
+    <div class="titlebar">
+      <span class="title-text">Add Cover Art</span>
+      <div class="win-controls"><button class="close" id="coverDialogClose" title="Close">&#10005;</button></div>
+    </div>
+    <div class="dialog-body">
+      <div class="dialog-song" id="dialogSongName">Song title</div>
+      <div class="dialog-preview" id="dialogPreview">no image selected</div>
+      <label class="file-btn btn" style="display:inline-flex;">Browse for Image...<input type="file" id="dialogCoverInput" accept="image/*"></label>
+      <div class="dialog-actions">
+        <button class="btn" id="dialogSkip">Skip</button>
+        <button class="btn" id="dialogSave" disabled>Save Cover</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const THEMES = [
+    {id:'blue', name:'Blue', tb1:'#0a246a', tb2:'#3a6ea5', tb3:'#a6caf0', accent:'#316ac5', face:'#ece9d8', face2:'#f4f2e8'},
+    {id:'olive', name:'Olive Green', tb1:'#33421f', tb2:'#6b8e4e', tb3:'#c3d6a0', accent:'#5f7a35', face:'#e9e6cf', face2:'#f1efe0'},
+    {id:'silver', name:'Silver', tb1:'#4b4b5c', tb2:'#8686a0', tb3:'#d6d6e0', accent:'#6f6f8c', face:'#e4e4ea', face2:'#eeeef2'}
+  ];
+  let themeId = 'blue';
+  try{ const s = localStorage.getItem('groovebox-xp-theme'); if(s) themeId = s; }catch(e){}
+
+  function applyTheme(id){
+    const t = THEMES.find(x=>x.id===id) || THEMES[0];
+    const r = document.documentElement.style;
+    r.setProperty('--tb1', t.tb1); r.setProperty('--tb2', t.tb2); r.setProperty('--tb3', t.tb3);
+    r.setProperty('--accent', t.accent); r.setProperty('--face', t.face); r.setProperty('--face2', t.face2);
+    themeId = id;
+    try{ localStorage.setItem('groovebox-xp-theme', id); }catch(e){}
+    renderThemeToolbar();
+  }
+  function renderThemeToolbar(){
+    const wrap = document.getElementById('themeToolbar');
+    wrap.innerHTML = '';
+    THEMES.forEach(t=>{
+      const b = document.createElement('button');
+      b.className = 'theme-btn' + (t.id===themeId ? ' sel' : '');
+      b.textContent = t.name;
+      b.addEventListener('click', ()=>applyTheme(t.id));
+      wrap.appendChild(b);
+    });
+  }
+  applyTheme(themeId);
+
+  // ---- library + player ----
+  let tracks = [];
+  let pendingAudioUrl = null, pendingAudioName = "";
+  let currentIndex = -1;
+  let searchTerm = '';
+
+  const titleInput = document.getElementById('titleInput');
+  const artistInput = document.getElementById('artistInput');
+  const descInput = document.getElementById('descInput');
+  const audioInput = document.getElementById('audioInput');
+  const audioOk = document.getElementById('audioOk');
+  const addBtn = document.getElementById('addBtn');
+  const trackList = document.getElementById('trackList');
+  const audioEl = document.getElementById('audioEl');
+  const npCover = document.getElementById('npCover');
+  const npTitle = document.getElementById('npTitle');
+  const npArtist = document.getElementById('npArtist');
+  const npDesc = document.getElementById('npDesc');
+  const footTitle = document.getElementById('footTitle');
+  const footArtist = document.getElementById('footArtist');
+  const playBtn = document.getElementById('playBtn');
+  const progress = document.getElementById('progress');
+  const progressFill = document.getElementById('progressFill');
+  const curTime = document.getElementById('curTime');
+  const durTime = document.getElementById('durTime');
+  const searchInput = document.getElementById('searchInput');
+
+  function fmtTime(s){ if(!isFinite(s)) return "0:00"; const m=Math.floor(s/60), sec=Math.floor(s%60); return m+":"+String(sec).padStart(2,'0'); }
+  function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+  // ---- song database search (desktop app only — published web pages can't call outside APIs) ----
+  const isDesktop = /Electron/i.test(navigator.userAgent);
+  const catalogSearch = document.getElementById('catalogSearch');
+  const catalogResults = document.getElementById('catalogResults');
+  const catalogNote = document.getElementById('catalogNote');
+  let pendingCatalogCover = null;
+  let searchDebounce = null;
+  if(!isDesktop){
+    catalogSearch.disabled = true;
+    catalogSearch.placeholder = 'Available in the Groovebox desktop app';
+    catalogNote.textContent = '(desktop app only — this page can\'t reach outside services)';
+  }
+  catalogSearch.addEventListener('input', ()=>{
+    clearTimeout(searchDebounce);
+    const q = catalogSearch.value.trim();
+    if(!isDesktop || q.length < 2){ catalogResults.innerHTML = ''; return; }
+    searchDebounce = setTimeout(()=>runCatalogSearch(q), 350);
+  });
+  async function runCatalogSearch(q){
+    catalogResults.innerHTML = '<div class="empty">Searching...</div>';
+    try{
+      const res = await fetch('https://itunes.apple.com/search?term=' + encodeURIComponent(q) + '&media=music&entity=song&limit=8');
+      const data = await res.json();
+      if(!data.results || !data.results.length){ catalogResults.innerHTML = '<div class="empty">No matches found.</div>'; return; }
+      catalogResults.innerHTML = '';
+      data.results.forEach(item=>{
+        const art = (item.artworkUrl100 || '').replace('100x100bb','600x600bb');
+        const row = document.createElement('div');
+        row.className = 'catalog-row';
+        row.innerHTML = `<div class="catalog-thumb" style="${art ? `background-image:url(${art})` : ''}"></div>
+          <div class="catalog-text"><div class="catalog-title">${escapeHtml(item.trackName||'')}</div><div class="catalog-sub">${escapeHtml(item.artistName||'')} — ${escapeHtml(item.collectionName||'')}</div></div>`;
+        row.addEventListener('click', ()=>{
+          titleInput.value = item.trackName || '';
+          artistInput.value = item.artistName || '';
+          descInput.value = [item.collectionName, item.primaryGenreName].filter(Boolean).join(' • ');
+          pendingCatalogCover = art || null;
+          catalogSearch.value = ''; catalogResults.innerHTML = '';
+        });
+        catalogResults.appendChild(row);
+      });
+    }catch(e){
+      catalogResults.innerHTML = '<div class="empty">Couldn\'t reach the music database — check your connection.</div>';
+    }
+  }
+
+  audioInput.addEventListener('change', e=>{
+    const f = e.target.files[0]; if(!f) return;
+    pendingAudioUrl = URL.createObjectURL(f); pendingAudioName = f.name;
+    audioOk.textContent = "✓ " + f.name; checkReady();
+  });
+  function checkReady(){ addBtn.disabled = !pendingAudioUrl; }
+
+  addBtn.addEventListener('click', ()=>{
+    if(!pendingAudioUrl) return;
+    const title = titleInput.value.trim() || pendingAudioName.replace(/\.[^/.]+$/, "");
+    const artist = artistInput.value.trim() || "Unknown Artist";
+    const description = descInput.value.trim();
+    const track = {id:Date.now(), title, artist, description, audioUrl:pendingAudioUrl, coverUrl:pendingCatalogCover||null, duration:null, unsupported:false};
+    tracks.push(track);
+    const probe = new Audio(track.audioUrl);
+    probe.addEventListener('loadedmetadata', ()=>{ track.duration = probe.duration; renderList(); });
+    probe.addEventListener('error', ()=>{ track.unsupported = true; renderList(); });
+
+    titleInput.value=""; artistInput.value=""; descInput.value=""; audioInput.value="";
+    audioOk.textContent="";
+    pendingAudioUrl=null; pendingAudioName=""; pendingCatalogCover=null;
+    addBtn.disabled = true;
+    renderList();
+    if(!track.coverUrl){ openCoverDialog(track); }
+  });
+
+  // ---- cover art popup ----
+  const coverOverlay = document.getElementById('coverOverlay');
+  const dialogSongName = document.getElementById('dialogSongName');
+  const dialogPreview = document.getElementById('dialogPreview');
+  const dialogCoverInput = document.getElementById('dialogCoverInput');
+  const dialogSave = document.getElementById('dialogSave');
+  const dialogSkip = document.getElementById('dialogSkip');
+  const dialogClose = document.getElementById('coverDialogClose');
+  let dialogTrack = null; let dialogPendingUrl = null;
+
+  function openCoverDialog(track){
+    dialogTrack = track; dialogPendingUrl = null;
+    dialogSongName.textContent = track.title;
+    dialogPreview.style.backgroundImage = ''; dialogPreview.textContent = 'no image selected';
+    dialogCoverInput.value = ''; dialogSave.disabled = true;
+    coverOverlay.classList.add('open');
+  }
+  function closeCoverDialog(){ coverOverlay.classList.remove('open'); dialogTrack = null; }
+
+  dialogCoverInput.addEventListener('change', e=>{
+    const f = e.target.files[0]; if(!f) return;
+    dialogPendingUrl = URL.createObjectURL(f);
+    dialogPreview.style.backgroundImage = `url(${dialogPendingUrl})`; dialogPreview.textContent = '';
+    dialogSave.disabled = false;
+  });
+  dialogSave.addEventListener('click', ()=>{
+    if(!dialogTrack || !dialogPendingUrl) return;
+    dialogTrack.coverUrl = dialogPendingUrl;
+    if(tracks[currentIndex] === dialogTrack){
+      npCover.style.backgroundImage = `url(${dialogPendingUrl})`; npCover.textContent = '';
+    }
+    renderList();
+    closeCoverDialog();
+  });
+  dialogSkip.addEventListener('click', closeCoverDialog);
+  dialogClose.addEventListener('click', closeCoverDialog);
+  coverOverlay.addEventListener('click', (e)=>{ if(e.target.id === 'coverOverlay') closeCoverDialog(); });
+  document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeCoverDialog(); });
+
+  npCover.addEventListener('click', ()=>{
+    if(currentIndex > -1 && tracks[currentIndex]) openCoverDialog(tracks[currentIndex]);
+  });
+
+  searchInput.addEventListener('input', e=>{ searchTerm = e.target.value.toLowerCase(); renderList(); });
+
+  function visibleTracks(){
+    return tracks.filter(t=>{
+      if(!searchTerm) return true;
+      return t.title.toLowerCase().includes(searchTerm) || t.artist.toLowerCase().includes(searchTerm) || (t.description||'').toLowerCase().includes(searchTerm);
+    });
+  }
+
+  function renderList(){
+    const vis = visibleTracks();
+    if(vis.length === 0){
+      trackList.innerHTML = `<div class="empty">${tracks.length ? 'No matches.' : 'No songs yet — add your first track above.'}</div>`;
+      return;
+    }
+    trackList.innerHTML = "";
+    vis.forEach((t)=>{
+      const i = tracks.indexOf(t);
+      const row = document.createElement('div');
+      row.className = 'track' + (i===currentIndex ? ' playing' : '');
+      row.innerHTML = `
+        <div class="c-cover"><div class="cover-thumb" title="Click to set cover art" style="${t.coverUrl ? `background-image:url(${t.coverUrl})` : ''}">${t.coverUrl ? '' : '+'}</div></div>
+        <div class="c-title title-cell">${escapeHtml(t.title)}</div>
+        <div class="c-artist artist-cell">${escapeHtml(t.artist)}</div>
+        <div class="c-desc desc-cell">${escapeHtml(t.description||'')}</div>
+        <div class="c-dur ui-font">${t.unsupported ? '⚠' : (t.duration ? fmtTime(t.duration) : '--:--')}</div>
+        <div class="c-del"><button class="del-btn" title="Remove">✕</button></div>
+      `;
+      row.addEventListener('click', (ev)=>{
+        if(ev.target.classList.contains('del-btn')) return;
+        if(ev.target.classList.contains('cover-thumb')){ openCoverDialog(t); return; }
+        playTrack(i);
+      });
+      row.querySelector('.del-btn').addEventListener('click', (ev)=>{ ev.stopPropagation(); removeTrack(i); });
+      trackList.appendChild(row);
+    });
+  }
+
+  function removeTrack(i){
+    const t = tracks[i];
+    if(i===currentIndex){
+      audioEl.pause(); audioEl.removeAttribute('src'); currentIndex=-1;
+      npTitle.textContent='Nothing playing'; npArtist.textContent='—'; npDesc.textContent=''; npCover.style.backgroundImage=''; npCover.textContent='no cover';
+      footTitle.textContent='Not playing'; footArtist.textContent='—';
+    } else if(i<currentIndex){ currentIndex--; }
+    tracks.splice(i,1);
+    try{ URL.revokeObjectURL(t.audioUrl); if(t.coverUrl) URL.revokeObjectURL(t.coverUrl); }catch(e){}
+    renderList();
+  }
+
+  function playTrack(i){
+    currentIndex = i; const t = tracks[i];
+    audioEl.src = t.audioUrl; audioEl.play().catch(()=>{});
+    npTitle.textContent = t.title; npArtist.textContent = t.artist; npDesc.textContent = t.description || '';
+    npCover.style.backgroundImage = t.coverUrl ? `url(${t.coverUrl})` : ''; npCover.textContent = t.coverUrl ? '' : 'no cover';
+    footTitle.textContent = t.title; footArtist.textContent = t.artist;
+    renderList();
+  }
+  function togglePlay(){
+    if(currentIndex===-1 && tracks.length){ playTrack(0); return; }
+    if(audioEl.paused) audioEl.play().catch(()=>{}); else audioEl.pause();
+  }
+  playBtn.addEventListener('click', togglePlay);
+  document.getElementById('centerBtn').addEventListener('click', togglePlay);
+  document.getElementById('menuBtn').addEventListener('click', ()=>{ window.scrollTo({top:0, behavior:'smooth'}); });
+  document.getElementById('prevBtn').addEventListener('click', ()=>{ if(tracks.length) playTrack((currentIndex-1+tracks.length)%tracks.length); });
+  document.getElementById('nextBtn').addEventListener('click', ()=>{ if(tracks.length) playTrack((currentIndex+1)%tracks.length); });
+  audioEl.addEventListener('ended', ()=>{ if(tracks.length) playTrack((currentIndex+1)%tracks.length); });
+  audioEl.addEventListener('error', ()=>{
+    if(currentIndex>-1 && tracks[currentIndex]){ tracks[currentIndex].unsupported = true; }
+    renderList();
+  });
+  audioEl.addEventListener('timeupdate', ()=>{
+    curTime.textContent = fmtTime(audioEl.currentTime); durTime.textContent = fmtTime(audioEl.duration);
+    progressFill.style.width = (audioEl.duration ? (audioEl.currentTime/audioEl.duration)*100 : 0) + "%";
+  });
+  progress.addEventListener('click', (e)=>{
+    if(!audioEl.duration) return;
+    const rect = progress.getBoundingClientRect();
+    audioEl.currentTime = ((e.clientX-rect.left)/rect.width) * audioEl.duration;
+  });
+
+  renderList();
+</script>
+</body>
+</html>
